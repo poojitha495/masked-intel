@@ -1,0 +1,43 @@
+# Configuration files
+config.php
+*.config
+
+# Composer dependencies
+/vendor/
+
+# Logs
+*.log
+error.log
+
+# Environment files
+.env
+.env.*
+
+# User uploaded content
+/uploads/*
+!/uploads/.gitkeep
+
+# Cache files
+*.cache
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Large binary files
+*.zip
+*.pdf
+
+# Sensitive data
+Personal Information.csv 

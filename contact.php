@@ -1,3 +1,90 @@
+<?php
+require_once 'config.php';
+
+// Initialize variables
+$success = $error = '';
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        // Validate required fields
+        $required_fields = [
+            'first_name' => 'First Name',
+            'last_name' => 'Last Name',
+            'email' => 'Email Address',
+            'phone' => 'Phone Number',
+            'organization' => 'Organization Name',
+            'inquiry_type' => 'Type of Inquiry',
+            'message' => 'Message'
+        ];
+
+        $errors = [];
+        foreach ($required_fields as $field => $label) {
+            if (empty($_POST[$field])) {
+                $errors[] = "$label is required";
+            }
+        }
+
+        if (!empty($errors)) {
+            throw new Exception(implode('<br>', $errors));
+        }
+
+        // Connect to database
+        $db = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        if (!$db) {
+            throw new Exception("Database connection failed: " . mysqli_connect_error());
+        }
+
+        // Create messages table if it doesn't exist
+        $table_check = mysqli_query($db, "SHOW TABLES LIKE 'messages'");
+        if (mysqli_num_rows($table_check) === 0) {
+            $create_table_query = "CREATE TABLE messages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                phone VARCHAR(50),
+                organization VARCHAR(255),
+                inquiry_type VARCHAR(100) NOT NULL,
+                message TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX (email),
+                INDEX (created_at)
+            )";
+            
+            if (!mysqli_query($db, $create_table_query)) {
+                throw new Exception("Failed to create messages table: " . mysqli_error($db));
+            }
+        }
+
+        // Prepare and insert the message
+        $name = $_POST['first_name'] . ' ' . $_POST['last_name'];
+        $email = $_POST['email'];
+        $phone = $_POST['phone'];
+        $organization = $_POST['organization'];
+        $inquiry_type = $_POST['inquiry_type'];
+        $message = $_POST['message'];
+
+        $query = "INSERT INTO messages (name, email, phone, organization, inquiry_type, message) VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt = $db->prepare($query);
+        
+        if (!$stmt) {
+            throw new Exception("Failed to prepare statement: " . $db->error);
+        }
+
+        $stmt->bind_param("ssssss", $name, $email, $phone, $organization, $inquiry_type, $message);
+        
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to send message: " . $stmt->error);
+        }
+
+        $success = "Your message has been sent successfully!";
+        mysqli_close($db);
+
+    } catch (Exception $e) {
+        $error = $e->getMessage();
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -262,9 +349,9 @@
     </div>
 
     <nav>
-      <a href="about.html">About</a>
-      <a href="features.html">Features</a>
-      <a href="contact.html">Contact</a>
+      <a href="about.php">About</a>
+      <a href="features.php">Features</a>
+      <a href="contact.php">Contact</a>
       <button class="nav-btn" onclick="redirectToLogin()">Admin Login</button>
     </nav>
   </header>
@@ -273,15 +360,27 @@
     <div class="contact-container">
       <h1 class="page-title">Get in Touch</h1>
       
-      <form class="contact-form" onsubmit="return handleSubmit(event)">
+      <?php if ($success): ?>
+        <div class="alert alert-success">
+          <?php echo $success; ?>
+        </div>
+      <?php endif; ?>
+
+      <?php if ($error): ?>
+        <div class="alert alert-error">
+          <?php echo $error; ?>
+        </div>
+      <?php endif; ?>
+
+      <form class="contact-form" method="POST" action="contact.php">
         <div class="form-row">
           <div class="form-group">
-            <label for="firstName">First Name <span class="required">*</span></label>
-            <input type="text" id="firstName" name="firstName" required placeholder="Your First Name">
+            <label for="first_name">First Name <span class="required">*</span></label>
+            <input type="text" id="first_name" name="first_name" required placeholder="Your First Name">
           </div>
           <div class="form-group">
-            <label for="lastName">Last Name <span class="required">*</span></label>
-            <input type="text" id="lastName" name="lastName" required placeholder="Your Last Name">
+            <label for="last_name">Last Name <span class="required">*</span></label>
+            <input type="text" id="last_name" name="last_name" required placeholder="Your Last Name">
           </div>
         </div>
 
@@ -302,8 +401,8 @@
         </div>
 
         <div class="form-group">
-          <label for="inquiry">Type of Inquiry <span class="required">*</span></label>
-          <select id="inquiry" name="inquiry" required>
+          <label for="inquiry_type">Type of Inquiry <span class="required">*</span></label>
+          <select id="inquiry_type" name="inquiry_type" required>
             <option value="">Select an option</option>
             <option value="facial_recognition">Facial Recognition Implementation</option>
             <option value="crowd_analytics">Crowd Analytics Solutions</option>
@@ -326,7 +425,7 @@
         <p>📧 Email: n210495@rguktn.ac.in</p>
         <p>📧 Email: n210494@rguktn.ac.in</p>
         <p>📞 Phone: 9347871250</p>
-        <p>📍 Location: RGUKT NUZVID, Eluru, Andhra Pradesh</p>
+        <p>📍 Location: RGUKT NUZVID, Nuzvid, Eluru, Andhra Pradesh</p>
       </div>
     </div>
   </main>
@@ -340,15 +439,7 @@
 
   <script>
     function redirectToLogin() {
-      window.location.href = "login.html";
-    }
-
-    function handleSubmit(event) {
-      event.preventDefault();
-      // Add your form submission logic here
-      alert('Thank you for your message. We will get back to you soon!');
-      event.target.reset();
-      return false;
+      window.location.href = "login.php";
     }
   </script>
 </body>
