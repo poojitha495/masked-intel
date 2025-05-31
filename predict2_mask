@@ -1,0 +1,34 @@
+import cv2
+import numpy as np
+from retinaface import RetinaFace
+import tensorflow as tf
+
+model = tf.keras.models.load_model("models/improved_mask_detector.h5")
+
+def detect_face_retina(img_path):
+    try:
+        faces = RetinaFace.extract_faces(img_path=img_path, align=True)
+        return faces[0] if faces else None
+    except Exception as e:
+        print("Face detection error:", e)
+        return None
+def preprocess_retina_image(img_path, target_size=(224, 224)):
+    face = detect_face_retina(img_path)
+    if face is None:
+        return None
+    face = cv2.resize(face, target_size)
+    face = face / 255.0
+    face = np.expand_dims(face, axis=0)
+    return face
+
+def predict_mask_retina(model, img_path):
+    input_img = preprocess_retina_image(img_path)
+    if input_img is None:
+        return "No face detected"
+    prediction = model.predict(input_img)
+    return "Mask" if prediction[0][0] > 0.5 else "No Mask"
+
+if __name__ == "__main__":
+    test_image_path = r"C:\Users\Mallipudi.Susi\Desktop\hackathon\me.JPG`"
+    result = predict_mask_retina(model, test_image_path)
+    print("Prediction:", cresult)

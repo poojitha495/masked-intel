@@ -1,0 +1,73 @@
+import os
+import numpy as np
+import cv2
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.utils import to_categorical
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.models import load_model
+import tensorflow as tf
+
+IMAGE_SIZE = 64
+NUM_CHANNELS = 3
+
+def load_dataset(data_path):
+    X = []
+    y = []
+    for emotion in os.listdir(data_path):
+        emotion_path = os.path.join(data_path, emotion)
+        if not os.path.isdir(emotion_path):
+            continue
+        for img_name in os.listdir(emotion_path):
+            img_path = os.path.join(emotion_path, img_name)
+            img = cv2.imread(img_path)
+            if img is None:
+                continue
+            img = cv2.resize(img, (IMAGE_SIZE, IMAGE_SIZE))
+            X.append(img)
+            y.append(emotion)
+    return np.array(X), np.array(y)
+
+# Paths
+train_path = r'C:\Users\Mallipudi.Susi\Desktop\hackathon\dataset\emo_sm\train2\train2'
+test_path = r'C:\Users\Mallipudi.Susi\Desktop\hackathon\dataset\emo_sm\test2\test2'
+
+
+# Load data
+X_train, y_train = load_dataset(train_path)
+X_test, y_test = load_dataset(test_path)
+
+# Normalize
+X_train = X_train / 255.0
+X_test = X_test / 255.0
+
+# Encode labels
+label_encoder = LabelEncoder()
+y_train_enc = to_categorical(label_encoder.fit_transform(y_train))
+y_test_enc = to_categorical(label_encoder.transform(y_test))
+
+# Save class names
+class_names = list(label_encoder.classes_)
+np.save("emotion_classes.npy", class_names)
+
+# Model
+model = Sequential([
+    Conv2D(32, (3, 3), activation='relu', input_shape=(IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS)),
+    MaxPooling2D(2, 2),
+    Conv2D(64, (3, 3), activation='relu'),
+    MaxPooling2D(2, 2),
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dropout(0.5),
+    Dense(len(class_names), activation='softmax')
+])
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train
+model.fit(X_train, y_train_enc, epochs=15, batch_size=32, validation_data=(X_test, y_test_enc))
+
+# Save model
+model.save('masked_emotion_model.h5')
+print("Model saved as masked_emotion_model.h5")
